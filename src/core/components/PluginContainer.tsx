@@ -1,4 +1,5 @@
-'use client'
+'use client';
+
 import React, { useMemo } from 'react';
 import { PluginContainerProps } from '@/core/pluginSystem/types/pluginTypes';
 import { usePluginSystem } from '../pluginSystem/PluginContext';
@@ -20,7 +21,7 @@ export const PluginContainer: React.FC<PluginContainerProps> = ({
     if (pluginIds) {
       return pluginIds
         .map(id => getPlugin(id))
-        .filter((plugin): plugin is NonNullable<typeof plugin> => 
+        .filter((plugin): plugin is NonNullable<typeof plugin> =>
           !!plugin && plugin.allowedZones.includes(zoneName)
         );
     }
@@ -30,7 +31,7 @@ export const PluginContainer: React.FC<PluginContainerProps> = ({
     if (zoneConfig && zoneConfig.pluginIds) {
       return zoneConfig.pluginIds
         .map(id => getPlugin(id))
-        .filter((plugin): plugin is NonNullable<typeof plugin> => 
+        .filter((plugin): plugin is NonNullable<typeof plugin> =>
           !!plugin && plugin.allowedZones.includes(zoneName)
         );
     }
@@ -53,7 +54,7 @@ export const PluginContainer: React.FC<PluginContainerProps> = ({
     
     // 4. Apply direct props config (highest priority)
     const propsConfig = pluginConfigs?.[pluginId] || {};
-    
+
     return {
       ...defaultConfig,
       ...globalConfig,
@@ -62,20 +63,18 @@ export const PluginContainer: React.FC<PluginContainerProps> = ({
     };
   };
 
-  if (pluginsToRender.length === 0) {
-    return null;
-  }
+  if (pluginsToRender.length === 0) return null;
 
   return (
-    <div className={`plugin-container plugin-zone-${zoneName} ${className || ''}`}>
+    <div className={`plugin-container space-y-4 plugin-zone-${zoneName} ${className || ''}`}>
       {pluginsToRender.map((plugin) => {
         const PluginComponent = plugin.component;
         const config = getPluginConfig(plugin.id);
         const instanceId = `${plugin.id}-${zoneName}-${Math.random().toString(36).substr(2, 9)}`;
-        
+
         return (
-          <div key={instanceId} className="plugin-wrapper">
-            <PluginComponent 
+          <div key={instanceId} className="plugin-wrapper p-4 bg-gray-100 rounded-md shadow-sm">
+            <PluginComponent
               zoneName={zoneName}
               config={config}
               instanceId={instanceId}
