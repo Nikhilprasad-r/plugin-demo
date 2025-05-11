@@ -6,9 +6,10 @@ export class PluginLoader implements PluginLoaderType {
    */
   public async loadPlugin(path: string): Promise<Plugin> {
     try {
+
       // Dynamic import to load the plugin module
       const module = await import(/* webpackChunkName: "plugin-[request]" */ `../../plugins/${path}`);
-      
+      console.log("path",module)
       // Plugin modules should export a default object that implements Plugin interface
       const plugin = module.default as Plugin;
       

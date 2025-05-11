@@ -1,5 +1,5 @@
 'use client'
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react'
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
 import { Plugin, PluginContextValue, PluginConfig } from '@/core/pluginSystem/types/pluginTypes'
 import { PluginRegistry } from './PluginRegistry'
 import { PluginLoader } from './PluginLoader'
@@ -76,8 +76,26 @@ export const PluginProvider: React.FC<PluginProviderProps> = ({ initialConfig, c
     return registry.getAllPlugins()
   }, [registry])
 
+  // 🔁 Auto-load from config on mount
+  useEffect(() => {
+    const zoneIds = Object.values(config.zones).flatMap((zone) => zone.pluginIds || [])
+    const toPascalCase = (str: string) =>
+      str
+        .split(/[-_]/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join('')
+    zoneIds.forEach(async (id) => {
+      try {
+        const fileName = `${toPascalCase(id)}.tsx`
+        const pluginPath = `${id}/${fileName}`
+        const plugin = await loader.loadPlugin(pluginPath)
+        registry.registerPlugin(plugin)
+      } catch (err) {
+        console.warn(`❌ Failed to load plugin "${id}":`, err)
+      }
+    })
+  }, [config, loader, registry])
 
-  // Create context value
   const contextValue = useMemo<PluginContextValue>(
     () => ({
       getPlugin,
@@ -96,10 +114,6 @@ export const PluginProvider: React.FC<PluginProviderProps> = ({ initialConfig, c
   return <PluginContext.Provider value={contextValue}>{children}</PluginContext.Provider>
 }
 
-/**
- * Hook for using the plugin system
- * @throws Error if used outside of PluginProvider
- */
 export const usePluginSystem = (): PluginContextValue => {
   const context = useContext(PluginContext)
 
