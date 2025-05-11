@@ -1,7 +1,7 @@
-import WeatherWidgetPlugin from './weatherWidget/WeatherWidget';
-import TaskManagerPlugin from './taskManager/TaskManager';
-import UserProfilePlugin from './userProfile/UserProfile';
-import AnalyticsDashboardPlugin from './analyticsDashboard/AnalyticsDashboard';
+import WeatherWidgetPlugin from './weather-widget/WeatherWidget';
+import TaskManagerPlugin from './task-manager/TaskManager';
+import UserProfilePlugin from './user-profile/UserProfile';
+import AnalyticsDashboardPlugin from './analytics-dashboard/AnalyticsDashboard';
 
 // Export all plugins
 export const plugins = [

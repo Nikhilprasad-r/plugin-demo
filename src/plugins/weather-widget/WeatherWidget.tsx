@@ -127,7 +127,7 @@ const WeatherWidget: React.FC<PluginProps & WeatherWidgetConfig> = ({
   );
 };
 
-// Define the plugin metadata
+// Define the plugin metadata.
 const WeatherWidgetPlugin = {
   id: 'weather-widget',
   name: 'Weather Widget',

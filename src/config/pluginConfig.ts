@@ -1,4 +1,4 @@
-import { PluginConfig } from '../core/pluginSystem';
+import { PluginConfig } from "@/core/pluginSystem/types/pluginTypes";
 
 export const defaultPluginConfig: PluginConfig = {
   zones: {

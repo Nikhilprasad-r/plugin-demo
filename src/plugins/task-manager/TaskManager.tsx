@@ -83,7 +83,7 @@ const TaskManager: React.FC<PluginProps & TaskManagerConfig> = ({ zoneName, conf
     [publish],
   )
 
-  // Filter and sort tasks
+  // Filter and sort tasks.
   const filteredTasks = tasks
     .filter((task) => showCompleted || !task.completed)
     .sort((a, b) => {

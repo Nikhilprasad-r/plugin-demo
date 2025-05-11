@@ -61,7 +61,7 @@ const UserProfile: React.FC<PluginProps & UserProfileConfig> = ({
   );
 };
 
-
+// config meta
 const UserProfilePlugin = {
   id: 'user-profile',
   name: 'User Profile',

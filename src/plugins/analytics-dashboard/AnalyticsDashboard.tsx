@@ -102,6 +102,7 @@ const AnalyticsDashboard: React.FC<PluginProps & AnalyticsDashboardConfig> = ({
     };
   }, [dataRange, refreshInterval, publish, subscribe]);
 
+  // loading
   if (loading && !analytics) {
     return (
       <div className="analytics-dashboard loading p-4 text-gray-500 animate-pulse">Loading analytics data...</div>
