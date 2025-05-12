@@ -17,7 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <nav className='main-nav'>
           <ul className='flex gap-6'>
             <li>
-              <Link href='/' className='hover:text-blue-600 transition'>
+              <Link href='/dashboard' className='hover:text-blue-600 transition'>
                 Dashboard
               </Link>
             </li>
@@ -27,7 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Link>
             </li>
             <li>
-              <Link href='/settings' className='hover:text-blue-600 transition'>
+              <Link href='/' className='hover:text-blue-600 transition'>
                 Settings
               </Link>
             </li>

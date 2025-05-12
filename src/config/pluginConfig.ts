@@ -13,7 +13,7 @@ export const defaultPluginConfig: PluginConfig = {
      
     },
     content: {
-      pluginIds: ['analytics-dashboard', 'task-manager'],
+      pluginIds: ['analytics-dashboard', 'task-manager','blog-widget'],
     },
     footer: {
       pluginIds: ['footer-links'],
