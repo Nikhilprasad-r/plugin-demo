@@ -1,195 +1,162 @@
 'use client'
 import { useState } from 'react'
-import { PluginContainer, usePluginSystem } from '@/core/pluginSystem'
+import { usePluginSystem } from '@/core/pluginSystem'
+import { usePluginConfig } from '@/core/pluginSystem/hooks/usePluginConfig'
 
-export function PagePluginSettings({ pageId }: { pageId: string }) {
-  const { 
-    getAllPlugins, 
-    getConfig,
-    updatePageConfig,
-    setActivePage,
-    activePageId
-  } = usePluginSystem()
-  
-  const [isEditingPage, setIsEditingPage] = useState(false)
-  const [draggedPlugin, setDraggedPlugin] = useState<string | null>(null)
-  const [dragOverZone, setDragOverZone] = useState<string | null>(null)
+interface PagePluginSettingsProps {
+  pageId: string
+}
+
+export const PagePluginSettings: React.FC<PagePluginSettingsProps> = ({ pageId }) => {
+  const { getConfig, getAllPlugins, getPluginsForZone } = usePluginSystem()
+  const { removePluginFromZone, updatePageConfig } = usePluginConfig()
+
+  const [expandedPluginId, setExpandedPluginId] = useState<string | null>(null)
 
   const config = getConfig()
   const allPlugins = getAllPlugins()
-  const pageConfig = config.pageConfigs.find(p => p.pageId === pageId) || {
-    pageId,
-    zones: {}
+
+  // Get page config or create an empty one
+  const pageConfig = config.pageConfigs.find((p) => p.pageId === pageId) || { pageId, zones: {} }
+
+  // Available zones
+  const zones = ['header', 'sidebar', 'content', 'footer']
+
+  // Get plugins for a specific zone
+  const getZonePlugins = (zoneName: string) => {
+    const zoneConfig = pageConfig.zones[zoneName] || { pluginIds: [] }
+    return zoneConfig.pluginIds || []
   }
 
-  const toggleEditingMode = () => {
-    if (isEditingPage) {
-      setActivePage(null)
+  // Remove plugin with confirmation
+  const handleRemovePlugin = (zoneName: string, pluginId: string) => {
+    if (window.confirm(`Remove ${pluginId} from ${zoneName} zone?`)) {
+      removePluginFromZone(pluginId, zoneName, pageId)
+    }
+  }
+
+  // Toggle plugin configuration panel
+  const togglePluginExpand = (pluginId: string) => {
+    setExpandedPluginId(expandedPluginId === pluginId ? null : pluginId)
+  }
+
+  // Reorder plugins in a zone
+  const movePluginInPage = (pageId: string, zoneName: string, pluginId: string, direction: 'up' | 'down') => {
+    const page = config.pageConfigs.find((p) => p.pageId === pageId)
+    if (!page) return
+
+    const zoneConfig = page.zones?.[zoneName] ?? { pluginIds: [] }
+    const pluginIds: string[] = [...zoneConfig.pluginIds]
+    const currentIndex = pluginIds.indexOf(pluginId)
+
+    if (currentIndex < 0) return
+
+    let newIndex = currentIndex
+    if (direction === 'up' && currentIndex > 0) {
+      newIndex--
+    } else if (direction === 'down' && currentIndex < pluginIds.length - 1) {
+      newIndex++
     } else {
-      setActivePage(pageId)
+      return // Can't move
     }
-    setIsEditingPage(!isEditingPage)
-  }
 
-  const handleDragStart = (e: React.DragEvent, pluginId: string) => {
-    e.dataTransfer.setData('text/plain', pluginId)
-    setDraggedPlugin(pluginId)
-  }
+    // Swap the plugin positions
+    ;[pluginIds[currentIndex], pluginIds[newIndex]] = [pluginIds[newIndex], pluginIds[currentIndex]]
 
-  const handleDragOver = (e: React.DragEvent, zoneName: string) => {
-    e.preventDefault()
-    setDragOverZone(zoneName)
+    updatePageConfig(pageId, {
+      [zoneName]: {
+        ...zoneConfig,
+        pluginIds,
+      },
+    })
   }
-
-  const handleDragLeave = () => {
-    setDragOverZone(null)
-  }
-
-  const handleDrop = (e: React.DragEvent, zoneName: string) => {
-    e.preventDefault()
-    const pluginId = e.dataTransfer.getData('text/plain')
-    const plugin = allPlugins.find(p => p.id === pluginId)
-    
-    if (plugin && plugin.allowedZones.includes(zoneName)) {
-      const currentZoneConfig = pageConfig.zones[zoneName] || { pluginIds: [] }
-      
-      if (!currentZoneConfig.pluginIds.includes(pluginId)) {
-        updatePageConfig(pageId, {
-          zones: {
-            ...pageConfig.zones,
-            [zoneName]: {
-              ...currentZoneConfig,
-              pluginIds: [...currentZoneConfig.pluginIds, pluginId]
-            }
-          }
-        })
-      }
-    }
-    
-    setDragOverZone(null)
-    setDraggedPlugin(null)
-  }
-
-  const assignedPluginIds = Object.values(pageConfig.zones).flatMap(z => z.pluginIds || [])
-  const unassignedPlugins = allPlugins.filter(p => !assignedPluginIds.includes(p.id))
 
   return (
-    <div className="page-plugin-settings space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Page Configuration: {pageId}</h3>
-        <button
-          onClick={toggleEditingMode}
-          className={`px-3 py-1 rounded ${
-            isEditingPage 
-              ? 'bg-blue-500 text-white' 
-              : 'bg-gray-200 hover:bg-gray-300'
-          }`}
-        >
-          {isEditingPage ? 'Editing Page' : 'Edit Page Layout'}
-        </button>
-      </div>
+    <div className='page-plugin-settings space-y-8'>
+      <div className='p-6 bg-white rounded-lg shadow'>
+        <h2 className='text-xl font-semibold mb-4'>
+          Page Configuration: <span className='text-blue-600'>{pageId}</span>
+        </h2>
 
-      {isEditingPage && (
-        <div className="space-y-6">
-          <div className="available-plugins p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium mb-2">Available Plugins</h4>
-            {unassignedPlugins.length === 0 ? (
-              <p className="text-sm text-gray-500">All plugins are assigned</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {unassignedPlugins.map(plugin => (
-                  <div
-                    key={plugin.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, plugin.id)}
-                    className="px-3 py-2 bg-white border rounded-md shadow-xs cursor-move hover:bg-gray-100"
-                  >
-                    {plugin.name}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className='space-y-6'>
+          {zones.map((zoneName) => {
+            const zonePlugins = getZonePlugins(zoneName)
 
-          <div className="zones-config grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Object.keys(config.defaultZones).map(zone => {
-              const isDragOver = dragOverZone === zone
-              const canDrop = draggedPlugin 
-                ? allPlugins.find(p => p.id === draggedPlugin)?.allowedZones.includes(zone)
-                : false
-              const zonePlugins = pageConfig.zones[zone]?.pluginIds || []
+            return (
+              <div key={zoneName} className='zone-config'>
+                <h3 className='text-lg font-medium capitalize mb-2 flex items-center'>
+                  <span className='w-2 h-6 bg-blue-500 rounded mr-2'></span>
+                  {zoneName} Zone
+                </h3>
 
-              return (
-                <div
-                  key={zone}
-                  onDragOver={(e) => handleDragOver(e, zone)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, zone)}
-                  className={`zone p-4 rounded-lg border-2 ${
-                    isDragOver
-                      ? canDrop
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-red-500 bg-red-50'
-                      : 'border-gray-200 bg-white'
-                  }`}
-                >
-                  <h4 className="font-medium mb-2">{zone}</h4>
-                  <div className="space-y-2">
-                    {zonePlugins.map(id => {
-                      const plugin = allPlugins.find(p => p.id === id)
+                {zonePlugins.length > 0 ? (
+                  <div className='space-y-3'>
+                    {zonePlugins.map((pluginId, index) => {
+                      const plugin = allPlugins.find((p) => p.id === pluginId)
+                      const isExpanded = expandedPluginId === pluginId
+
                       return (
-                        <div
-                          key={id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, id)}
-                          className="flex items-center justify-between p-2 bg-gray-100 rounded"
-                        >
-                          <span>{plugin?.name || id}</span>
-                          <button
-                            onClick={() => {
-                              const updatedZone = {
-                                ...pageConfig.zones[zone],
-                                pluginIds: pageConfig.zones[zone].pluginIds.filter(pid => pid !== id)
-                              }
-                              updatePageConfig(pageId, {
-                                zones: {
-                                  ...pageConfig.zones,
-                                  [zone]: updatedZone
-                                }
-                              })
-                            }}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            ×
-                          </button>
+                        <div key={pluginId} className='plugin-item border border-gray-200 rounded-md overflow-hidden'>
+                          <div className='flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100'>
+                            <div className='flex items-center space-x-2'>
+                              <span className='font-medium'>{plugin?.name || pluginId}</span>
+                              <span className='text-xs text-gray-500'>{pluginId}</span>
+                            </div>
+
+                            <div className='flex items-center space-x-1'>
+                              <button
+                                onClick={() => movePluginInPage(pageId, zoneName, pluginId, 'up')}
+                                disabled={index === 0}
+                                className='p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300'
+                                title='Move up'
+                              >
+                                ↑
+                              </button>
+                              <button
+                                onClick={() => movePluginInPage(pageId, zoneName, pluginId, 'down')}
+                                disabled={index === zonePlugins.length - 1}
+                                className='p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300'
+                                title='Move down'
+                              >
+                                ↓
+                              </button>
+                              <button onClick={() => togglePluginExpand(pluginId)} className='p-1 text-gray-500 hover:text-gray-700' title='Toggle configuration'>
+                                {isExpanded ? '▼' : '▶'}
+                              </button>
+                              <button onClick={() => handleRemovePlugin(zoneName, pluginId)} className='p-1 text-red-500 hover:text-red-700' title='Remove plugin'>
+                                ×
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className='p-3 border-t border-gray-200 bg-white'>
+                              <div className='text-sm text-gray-700'>
+                                <p className='mb-2'>
+                                  <strong>Description:</strong> {plugin?.description || 'No description available'}
+                                </p>
+                                {plugin?.version && <p className='text-xs text-gray-500'>Version: {plugin.version}</p>}
+                              </div>
+
+                              {/* Plugin configuration panel could go here */}
+                              <div className='mt-3 pt-3 border-t border-gray-200'>
+                                <div className='text-sm text-blue-600'>Configuration options would appear here</div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
-                    {zonePlugins.length === 0 && (
-                      <p className="text-sm text-gray-500">
-                        {isDragOver && canDrop ? 'Drop here to add' : 'No plugins in this zone'}
-                      </p>
-                    )}
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                ) : (
+                  <div className='p-4 bg-gray-50 border border-dashed border-gray-300 rounded-md'>
+                    <p className='text-gray-500 text-center'>No plugins configured for this zone.</p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
-      )}
-
-      <div className="preview border-t pt-4">
-        <h4 className="font-medium mb-2">Preview</h4>
-        {Object.keys(config.defaultZones).map(zone => (
-          <div key={zone} className="mb-6">
-            <h5 className="text-sm font-semibold mb-1">{zone}</h5>
-            <PluginContainer 
-              zoneName={zone} 
-              pageId={pageId}
-              className="min-h-[80px] bg-gray-50 p-2 rounded"
-            />
-          </div>
-        ))}
       </div>
     </div>
   )

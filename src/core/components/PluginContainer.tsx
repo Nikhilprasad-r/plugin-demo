@@ -10,7 +10,12 @@ export const PluginContainer: React.FC<PluginContainerProps> = ({
   className,
   pageId
 }) => {
-  const { getPluginsForZone, getPlugin, getConfig, activePageId } = usePluginSystem()
+  const { 
+    getPluginsForZone, 
+    getConfig, 
+    activePageId, 
+    eventBus 
+  } = usePluginSystem()
   
   const getLayoutClasses = () => {
     switch (zoneName) {
@@ -23,72 +28,46 @@ export const PluginContainer: React.FC<PluginContainerProps> = ({
   }
 
   const pluginsToRender = useMemo(() => {
-    const config = getConfig()
-    const usePageConfig = pageId && activePageId === pageId
+    // Use the context method specifically designed for zone plugins
+    const zonePlugins = getPluginsForZone(zoneName)
     
-    // Highest priority: explicitly passed pluginIds
-    if (pluginIds) {
-      return pluginIds
-        .map(id => getPlugin(id))
-        .filter((plugin): plugin is NonNullable<typeof plugin> =>
-          !!plugin && plugin.allowedZones.includes(zoneName)
-        )
-    }
-    
-    // Page-specific config
-    if (usePageConfig) {
+    // Filter by page if specified
+    if (pageId) {
+      const config = getConfig()
       const pageConfig = config.pageConfigs.find(p => p.pageId === pageId)
-      if (pageConfig?.zones[zoneName]?.pluginIds) {
-        return pageConfig.zones[zoneName].pluginIds
-          .map(id => getPlugin(id))
-          .filter((plugin): plugin is NonNullable<typeof plugin> =>
-            !!plugin && plugin.allowedZones.includes(zoneName)
-          )
-      }
+      const pageZonePlugins = pageConfig?.zones?.[zoneName]?.pluginIds || []
+      
+      return zonePlugins.filter(plugin => 
+        pageZonePlugins.includes(plugin.id) ||
+        (pluginIds?.includes(plugin.id))
+      )
     }
     
-    // Global default zones
-    if (config.defaultZones[zoneName]?.pluginIds) {
-      return config.defaultZones[zoneName].pluginIds
-        .map(id => getPlugin(id))
-        .filter((plugin): plugin is NonNullable<typeof plugin> =>
-          !!plugin && plugin.allowedZones.includes(zoneName)
-        )
-    }
-    
-    // Fallback to all plugins for zone
-    return getPluginsForZone(zoneName)
-  }, [getPlugin, getPluginsForZone, pluginIds, zoneName, getConfig, pageId, activePageId])
-
+    // Include any plugins passed directly via props
+    return pluginIds 
+      ? zonePlugins.filter(plugin => pluginIds.includes(plugin.id))
+      : zonePlugins
+  }, [getPluginsForZone, zoneName, pageId, getConfig, pluginIds])
   const getPluginConfig = (pluginId: string) => {
     const config = getConfig()
-    const plugin = getPlugin(pluginId)
+    const plugin = pluginsToRender.find(p => p.id === pluginId)
+    if (!plugin) return {}
     
-    // Start with plugin defaults
-    const result = { ...(plugin?.defaultConfig || {}) }
+    const result = { ...(plugin.defaultConfig || {}) }
     
-    // Apply global config
-    if (config.globalPluginConfigs?.[pluginId]) {
-      Object.assign(result, config.globalPluginConfigs[pluginId])
-    }
-    
-    // Apply zone-specific config from default zones
-    if (config.defaultZones[zoneName]?.pluginConfigs?.[pluginId]) {
-      Object.assign(result, config.defaultZones[zoneName].pluginConfigs[pluginId])
-    }
-    
-    // Apply page-specific zone config if applicable
-    if (pageId && activePageId === pageId) {
-      const pageConfig = config.pageConfigs.find(p => p.pageId === pageId)
-      if (pageConfig?.zones[zoneName]?.pluginConfigs?.[pluginId]) {
-        Object.assign(result, pageConfig.zones[zoneName].pluginConfigs[pluginId])
-      }
-    }
-    
-    // Apply direct props config (highest priority)
-    if (pluginConfigs?.[pluginId]) {
-      Object.assign(result, pluginConfigs[pluginId])
-    }
+    // Apply config in order of increasing specificity
+    const configLayers = [
+      config.globalPluginConfigs?.[pluginId],
+      pageId && config.pageConfigs
+        .find(p => p.pageId === pageId)
+        ?.zones?.[zoneName]?.pluginConfigs?.[pluginId],
+      activePageId && !pageId && config.pageConfigs
+        .find(p => p.pageId === activePageId)
+        ?.zones?.[zoneName]?.pluginConfigs?.[pluginId],
+      pluginConfigs?.[pluginId]
+    ].filter(Boolean)
+
+    configLayers.forEach(layer => Object.assign(result, layer))
     
     return result
   }
@@ -100,7 +79,7 @@ export const PluginContainer: React.FC<PluginContainerProps> = ({
       {pluginsToRender.map((plugin) => {
         const PluginComponent = plugin.component
         const config = getPluginConfig(plugin.id)
-        const instanceId = `${plugin.id}-${zoneName}-${Math.random().toString(36).substr(2, 9)}`
+        const instanceId = `${plugin.id}-${zoneName}-${Math.random().toString(36).slice(2, 11)}`
 
         return (
           <div key={instanceId} className="plugin-wrapper p-4 bg-gray-100 rounded-md shadow-sm">
@@ -108,8 +87,9 @@ export const PluginContainer: React.FC<PluginContainerProps> = ({
               zoneName={zoneName}
               config={config}
               instanceId={instanceId}
+              eventBus={eventBus}
             />
-          </div>
+            </div>
         )
       })}
     </div>

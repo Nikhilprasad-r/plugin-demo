@@ -1,18 +1,16 @@
+'use client'
 import { PluginConfig } from '@/core/pluginSystem/types/pluginTypes'
 
 export const defaultPluginConfig: PluginConfig = {
+  // Keep defaultZones structure for backward compatibility
+  // but these won't be used when loading plugins
   defaultZones: {
     header: {
       pluginIds: ['navigation-menu'],
     },
     sidebar: {
       pluginIds: ['user-profile', 'weather-widget'],
-      pluginConfigs: {
-        'weather-widget': {
-          location: 'auto',
-          units: 'metric',
-        },
-      },
+     
     },
     content: {
       pluginIds: ['analytics-dashboard', 'task-manager'],
@@ -21,27 +19,36 @@ export const defaultPluginConfig: PluginConfig = {
       pluginIds: ['footer-links'],
     },
   },
+  
+  // We still maintain global configs to be applied to any plugins that match
   globalPluginConfigs: {
     'analytics-dashboard': {
       refreshInterval: 60,
       showDetailedMetrics: false,
+    }, 
+    'weather-widget': {
+      location: 'auto',
+      units: 'metric',
     },
   },
+  
+  // This is where all the actual plugin configurations will be stored
   pageConfigs: [],
+  
+  // Template for new pages
   defaultPageConfig: {
     zones: {
-      // Default zones for new pages
       header: {
-        pluginIds: [], // Empty by default
+        pluginIds: [],
       },
       sidebar: {
-        pluginIds: [], // Empty by default
+        pluginIds: [],
       },
       content: {
-        pluginIds: [], // Empty by default
+        pluginIds: [],
       },
       footer: {
-        pluginIds: [], // Empty by default
+        pluginIds: [],
       },
     },
   },

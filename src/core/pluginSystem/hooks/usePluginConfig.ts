@@ -1,224 +1,245 @@
-import { useCallback, useMemo } from 'react';
-import { usePluginSystem } from '../PluginContext';
-import { PluginConfig, UsePluginConfigReturn } from '@/core/pluginSystem/types/pluginTypes';
-
-
+import { useCallback, useMemo } from 'react'
+import { usePluginSystem } from '../PluginContext'
+import { PluginConfig, PluginZoneConfig, UsePluginConfigReturn } from '@/core/pluginSystem/types/pluginTypes'
 
 export const usePluginConfig = (): UsePluginConfigReturn => {
-  const { getConfig, updateConfig, getPlugin } = usePluginSystem();
-  
-  const config = useMemo(() => getConfig(), [getConfig]);
-  
-  /**
-   * Get configuration for a specific plugin, optionally in a specific zone
-   */
-  const getPluginConfig = useCallback(<T = Record<string, any>>(
-    pluginId: string, 
-    zoneName?: string
-  ): T => {
-    const currentConfig = getConfig();
-    const plugin = getPlugin(pluginId);
-    
-    // Start with plugin defaults
-    const result = { ...(plugin?.defaultConfig || {}) };
-    
-    // Apply global plugin config
-    if (currentConfig.globalPluginConfigs?.[pluginId]) {
-      Object.assign(result, currentConfig.globalPluginConfigs[pluginId]);
-    }
-    
-    // Apply zone-specific config if requested
-    if (zoneName && currentConfig.zones[zoneName]?.pluginConfigs?.[pluginId]) {
-      Object.assign(result, currentConfig.zones[zoneName].pluginConfigs[pluginId]);
-    }
-    
-    return result as T;
-  }, [getConfig, getPlugin]);
-  
-  /**
-   * Update configuration for a specific plugin
-   */
-  const setPluginConfig = useCallback((
-    pluginId: string, 
-    config: Record<string, any>, 
-    zoneName?: string
-  ): void => {
-    const currentConfig = getConfig();
-    const newConfig: PluginConfig = { ...currentConfig };
-    
-    if (zoneName) {
-      // Update zone-specific config
-      if (!newConfig.zones[zoneName]) {
-        newConfig.zones[zoneName] = { pluginIds: [] };
+  const { getConfig, updateConfig, getPlugin } = usePluginSystem()
+
+  const config = useMemo(() => getConfig(), [getConfig])
+
+  const getPluginConfig = useCallback(
+    <T = Record<string, any>>(pluginId: string, zoneName?: string, pageId?: string): T => {
+      const currentConfig = getConfig()
+      const plugin = getPlugin(pluginId)
+
+      // Start with plugin defaults
+      const result = { ...(plugin?.defaultConfig || {}) }
+
+      // Apply global config
+      if (currentConfig.globalPluginConfigs?.[pluginId]) {
+        Object.assign(result, currentConfig.globalPluginConfigs[pluginId])
       }
-      
-      if (!newConfig.zones[zoneName].pluginConfigs) {
-        newConfig.zones[zoneName].pluginConfigs = {};
+
+      // Apply zone-specific config, but ONLY look in page-specific zones, not default zones
+      if (zoneName && pageId) {
+        const pageConfig = currentConfig.pageConfigs.find((p) => p.pageId === pageId)
+        if (pageConfig?.zones[zoneName]?.pluginConfigs?.[pluginId]) {
+          Object.assign(result, pageConfig.zones[zoneName].pluginConfigs[pluginId])
+        }
       }
-      
-      newConfig.zones[zoneName].pluginConfigs[pluginId] = {
-        ...(newConfig.zones[zoneName].pluginConfigs[pluginId] || {}),
-        ...config
-      };
-    } else {
-      // Update global config
-      if (!newConfig.globalPluginConfigs) {
-        newConfig.globalPluginConfigs = {};
+
+      return result as T
+    },
+    [getConfig, getPlugin],
+  )
+  const updatePageConfig = useCallback(
+    (pageId: string, updatedZones: Record<string, PluginZoneConfig>): void => {
+      const currentConfig = getConfig()
+      const newConfig: PluginConfig = { ...currentConfig }
+
+      const pageIndex = newConfig.pageConfigs.findIndex((p) => p.pageId === pageId)
+      if (pageIndex >= 0) {
+        newConfig.pageConfigs[pageIndex] = {
+          ...newConfig.pageConfigs[pageIndex],
+          zones: {
+            ...newConfig.pageConfigs[pageIndex].zones,
+            ...updatedZones,
+          },
+        }
+      } else {
+        newConfig.pageConfigs.push({ pageId, zones: updatedZones })
       }
-      
-      newConfig.globalPluginConfigs[pluginId] = {
-        ...(newConfig.globalPluginConfigs[pluginId] || {}),
-        ...config
-      };
-    }
-    
-    updateConfig(newConfig);
-  }, [getConfig, updateConfig]);
-  
-  /**
-   * Move a plugin from one zone to another
-   */
-  const movePlugin = useCallback((
-    pluginId: string,
-    fromZone: string,
-    toZone: string
-  ): void => {
-    const currentConfig = getConfig();
-    const newConfig: PluginConfig = { ...currentConfig };
-    
-    // Check if the plugin is in the source zone
-    if (
-      !newConfig.zones[fromZone] || 
-      !newConfig.zones[fromZone].pluginIds.includes(pluginId)
-    ) {
-      console.warn(`Plugin ${pluginId} is not in zone ${fromZone}`);
-      return;
-    }
-    
-    // Check if the destination zone exists
-    if (!newConfig.zones[toZone]) {
-      newConfig.zones[toZone] = { pluginIds: [] };
-    }
-    
-    // Remove from source zone
-    newConfig.zones[fromZone] = {
-      ...newConfig.zones[fromZone],
-      pluginIds: newConfig.zones[fromZone].pluginIds.filter(id => id !== pluginId)
-    };
-    
-    // Add to destination zone
-    newConfig.zones[toZone] = {
-      ...newConfig.zones[toZone],
-      pluginIds: [...newConfig.zones[toZone].pluginIds, pluginId]
-    };
-    
-    // Move zone-specific config if it exists
-    if (
-      newConfig.zones[fromZone].pluginConfigs && 
-      newConfig.zones[fromZone].pluginConfigs[pluginId]
-    ) {
-      if (!newConfig.zones[toZone].pluginConfigs) {
-        newConfig.zones[toZone].pluginConfigs = {};
+
+      updateConfig(newConfig)
+    },
+    [getConfig, updateConfig],
+  )
+
+  const setPluginConfig = useCallback(
+    (pluginId: string, config: Record<string, any>, zoneName?: string, pageId?: string): void => {
+      const currentConfig = getConfig()
+      const newConfig: PluginConfig = { ...currentConfig }
+
+      if (pageId && zoneName) {
+        // Update page-specific zone config
+        const pageIndex = newConfig.pageConfigs.findIndex((p) => p.pageId === pageId)
+        const pageConfig = pageIndex >= 0 ? newConfig.pageConfigs[pageIndex] : { pageId, zones: {} }
+
+        if (!pageConfig.zones[zoneName]) {
+          pageConfig.zones[zoneName] = { pluginIds: [] }
+        }
+
+        pageConfig.zones[zoneName].pluginConfigs = {
+          ...(pageConfig.zones[zoneName].pluginConfigs || {}),
+          [pluginId]: {
+            ...(pageConfig.zones[zoneName].pluginConfigs?.[pluginId] || {}),
+            ...config,
+          },
+        }
+
+        if (pageIndex >= 0) {
+          newConfig.pageConfigs[pageIndex] = pageConfig
+        } else {
+          newConfig.pageConfigs.push(pageConfig)
+        }
+      } else if (zoneName) {
+        // When setting config for a zone but no pageId, do nothing
+        // This prevents modifying default zones which we don't want to use
+        console.warn('Attempted to set zone-specific plugin config without a pageId. Operation skipped.')
+        return
+      } else {
+        // Update global config
+        newConfig.globalPluginConfigs = {
+          ...(newConfig.globalPluginConfigs || {}),
+          [pluginId]: {
+            ...(newConfig.globalPluginConfigs?.[pluginId] || {}),
+            ...config,
+          },
+        }
       }
-      
-      newConfig.zones[toZone].pluginConfigs[pluginId] = 
-        newConfig.zones[fromZone].pluginConfigs[pluginId];
-      
-      delete newConfig.zones[fromZone].pluginConfigs[pluginId];
-    }
-    
-    updateConfig(newConfig);
-  }, [getConfig, updateConfig]);
-  
-  /**
-   * Add a plugin to a zone
-   */
-  const addPluginToZone = useCallback((
-    pluginId: string,
-    zoneName: string
-  ): void => {
-    const currentConfig = getConfig();
-    const newConfig: PluginConfig = { ...currentConfig };
-    
-    // Check if the plugin exists
-    const plugin = getPlugin(pluginId);
-    if (!plugin) {
-      console.warn(`Plugin ${pluginId} does not exist`);
-      return;
-    }
-    
-    // Check if the plugin is allowed in this zone
-    if (!plugin.allowedZones.includes(zoneName)) {
-      console.warn(`Plugin ${pluginId} is not allowed in zone ${zoneName}`);
-      return;
-    }
-    
-    // Initialize zone if it doesn't exist
-    if (!newConfig.zones[zoneName]) {
-      newConfig.zones[zoneName] = { pluginIds: [] };
-    }
-    
-    // Check if the plugin is already in the zone
-    if (newConfig.zones[zoneName].pluginIds.includes(pluginId)) {
-      console.warn(`Plugin ${pluginId} is already in zone ${zoneName}`);
-      return;
-    }
-    
-    // Add plugin to zone
-    newConfig.zones[zoneName] = {
-      ...newConfig.zones[zoneName],
-      pluginIds: [...newConfig.zones[zoneName].pluginIds, pluginId]
-    };
-    
-    updateConfig(newConfig);
-  }, [getConfig, updateConfig, getPlugin]);
-  
-  /**
-   * Remove a plugin from a zone
-   */
-  const removePluginFromZone = useCallback((
-    pluginId: string,
-    zoneName: string
-  ): void => {
-    const currentConfig = getConfig();
-    const newConfig: PluginConfig = { ...currentConfig };
-    
-    // Check if the zone exists
-    if (!newConfig.zones[zoneName]) {
-      console.warn(`Zone ${zoneName} does not exist`);
-      return;
-    }
-    
-    // Check if the plugin is in the zone
-    if (!newConfig.zones[zoneName].pluginIds.includes(pluginId)) {
-      console.warn(`Plugin ${pluginId} is not in zone ${zoneName}`);
-      return;
-    }
-    
-    // Remove plugin from zone
-    newConfig.zones[zoneName] = {
-      ...newConfig.zones[zoneName],
-      pluginIds: newConfig.zones[zoneName].pluginIds.filter(id => id !== pluginId)
-    };
-    
-    // Remove plugin config from zone if it exists
-    if (
-      newConfig.zones[zoneName].pluginConfigs && 
-      newConfig.zones[zoneName].pluginConfigs[pluginId]
-    ) {
-      delete newConfig.zones[zoneName].pluginConfigs[pluginId];
-    }
-    
-    updateConfig(newConfig);
-  }, [getConfig, updateConfig]);
+
+      updateConfig(newConfig)
+    },
+    [getConfig, updateConfig],
+  )
+
+  const movePlugin = useCallback(
+    (pluginId: string, fromZone: string, toZone: string, pageId?: string): void => {
+      // If no pageId is provided, do nothing as we only work with page-specific plugins
+      if (!pageId) {
+        console.warn('Attempted to move plugin without specifying a pageId. Operation skipped.')
+        return
+      }
+
+      const currentConfig = getConfig()
+      const newConfig: PluginConfig = { ...currentConfig }
+
+      // Find the page config
+      const pageConfigIndex = newConfig.pageConfigs.findIndex((p) => p.pageId === pageId)
+      if (pageConfigIndex === -1) {
+        console.warn(`Page ${pageId} not found`)
+        return
+      }
+
+      const pageConfig = newConfig.pageConfigs[pageConfigIndex]
+
+      if (!pageConfig.zones[fromZone]?.pluginIds.includes(pluginId)) {
+        console.warn(`Plugin ${pluginId} is not in page zone ${fromZone}`)
+        return
+      }
+
+      // Initialize toZone if it doesn't exist
+      if (!pageConfig.zones[toZone]) {
+        pageConfig.zones[toZone] = { pluginIds: [] }
+      }
+
+      // Move plugin
+      pageConfig.zones[fromZone].pluginIds = pageConfig.zones[fromZone].pluginIds.filter((id) => id !== pluginId)
+      pageConfig.zones[toZone].pluginIds = [...pageConfig.zones[toZone].pluginIds, pluginId]
+
+      // Move config if exists
+      if (pageConfig.zones[fromZone].pluginConfigs?.[pluginId]) {
+        pageConfig.zones[toZone].pluginConfigs = {
+          ...(pageConfig.zones[toZone].pluginConfigs || {}),
+          [pluginId]: pageConfig.zones[fromZone].pluginConfigs[pluginId],
+        }
+        delete pageConfig.zones[fromZone].pluginConfigs[pluginId]
+      }
+
+      updateConfig(newConfig)
+    },
+    [getConfig, updateConfig],
+  )
+
+  const addPluginToZone = useCallback(
+    (pluginId: string, zoneName: string, pageId?: string): void => {
+      // If no pageId is provided, do nothing as we only work with page-specific plugins
+      if (!pageId) {
+        console.warn('Attempted to add plugin to zone without specifying a pageId. Operation skipped.')
+        return
+      }
+
+      const currentConfig = getConfig()
+      const plugin = getPlugin(pluginId)
+
+      if (!plugin) {
+        console.warn(`Plugin ${pluginId} does not exist`)
+        return
+      }
+
+      if (!plugin.allowedZones.includes(zoneName)) {
+        console.warn(`Plugin ${pluginId} is not allowed in zone ${zoneName}`)
+        return
+      }
+
+      const newConfig: PluginConfig = { ...currentConfig }
+
+      const pageIndex = newConfig.pageConfigs.findIndex((p) => p.pageId === pageId)
+      const pageConfig = pageIndex >= 0 ? newConfig.pageConfigs[pageIndex] : { pageId, zones: {} }
+
+      if (!pageConfig.zones[zoneName]) {
+        pageConfig.zones[zoneName] = { pluginIds: [] }
+      }
+
+      if (pageConfig.zones[zoneName].pluginIds.includes(pluginId)) {
+        console.warn(`Plugin ${pluginId} already exists in zone ${zoneName} of page ${pageId}`)
+        return
+      }
+
+      pageConfig.zones[zoneName].pluginIds.push(pluginId)
+
+      if (pageIndex >= 0) {
+        newConfig.pageConfigs[pageIndex] = pageConfig
+      } else {
+        newConfig.pageConfigs.push(pageConfig)
+      }
+
+      updateConfig(newConfig)
+    },
+    [getConfig, updateConfig, getPlugin],
+  )
+
+  const removePluginFromZone = useCallback(
+    (pluginId: string, zoneName: string, pageId?: string): void => {
+      // If no pageId is provided, do nothing as we only work with page-specific plugins
+      if (!pageId) {
+        console.warn('Attempted to remove plugin from zone without specifying a pageId. Operation skipped.')
+        return
+      }
+
+      const currentConfig = getConfig()
+      const newConfig: PluginConfig = { ...currentConfig }
+
+      const pageConfig = newConfig.pageConfigs.find((p) => p.pageId === pageId)
+      if (!pageConfig?.zones[zoneName]) {
+        console.warn(`Zone ${zoneName} does not exist in page ${pageId}`)
+        return
+      }
+
+      if (!pageConfig.zones[zoneName].pluginIds.includes(pluginId)) {
+        console.warn(`Plugin ${pluginId} is not in zone ${zoneName} of page ${pageId}`)
+        return
+      }
+
+      pageConfig.zones[zoneName].pluginIds = pageConfig.zones[zoneName].pluginIds.filter((id) => id !== pluginId)
+
+      if (pageConfig.zones[zoneName].pluginConfigs?.[pluginId]) {
+        delete pageConfig.zones[zoneName].pluginConfigs[pluginId]
+      }
+
+      updateConfig(newConfig)
+    },
+    [getConfig, updateConfig],
+  )
 
   return {
     config,
     updateConfig,
+    updatePageConfig,
     getPluginConfig,
     setPluginConfig,
     movePlugin,
     addPluginToZone,
-    removePluginFromZone
-  };
-};
+    removePluginFromZone,
+  }
+}
