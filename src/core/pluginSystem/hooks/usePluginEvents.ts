@@ -1,30 +1,23 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { usePluginSystem } from '../PluginContext';
 import { UsePluginEventsReturn } from '@/core/pluginSystem/types/pluginTypes';
 
-
+type EventCallback<T = any> = (data?: T) => void;
 
 export const usePluginEvents = (): UsePluginEventsReturn => {
   const { eventBus } = usePluginSystem();
-  
-  /**
-   * Subscribe to plugin events with automatic cleanup
-   */
+
+  // Track all active subscriptions to clean them up on unmount
+  const subscriptionsRef = useRef<Array<() => void>>([]);
+
   const subscribe = useCallback(<T = any>(
-    event: string, 
-    callback: (data?: T) => void
+    event: string,
+    callback: EventCallback<T>
   ): void => {
     const unsubscribe = eventBus.subscribe<T>(event, callback);
-    
-    // Clean up subscription when component unmounts
-    useEffect(() => {
-      return () => unsubscribe();
-    }, [unsubscribe]);
+    subscriptionsRef.current.push(unsubscribe);
   }, [eventBus]);
-  
-  /**
-   * Publish an event to the plugin system
-   */
+
   const publish = useCallback(<T = any>(
     event: string,
     data?: T
@@ -32,8 +25,15 @@ export const usePluginEvents = (): UsePluginEventsReturn => {
     eventBus.publish<T>(event, data);
   }, [eventBus]);
 
+  useEffect(() => {
+    return () => {
+      subscriptionsRef.current.forEach(unsubscribe => unsubscribe());
+      subscriptionsRef.current = [];
+    };
+  }, []);
+
   return {
     subscribe,
-    publish
+    publish,
   };
 };

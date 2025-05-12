@@ -1,11 +1,10 @@
 'use client'
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
-import { Plugin, PluginContextValue, PluginConfig } from '@/core/pluginSystem/types/pluginTypes'
-import { PluginRegistry } from './PluginRegistry'
+import { Plugin, PluginContextValue, PluginConfig, PagePluginConfig } from '@/core/pluginSystem/types/pluginTypes'
+import { pluginRegistry } from './PluginRegistry'
 import { PluginLoader } from './PluginLoader'
 import { PluginEventBus } from './PluginEventBus'
 
-// Create context with a default value
 const PluginContext = createContext<PluginContextValue | null>(null)
 
 interface PluginProviderProps {
@@ -14,14 +13,25 @@ interface PluginProviderProps {
 }
 
 export const PluginProvider: React.FC<PluginProviderProps> = ({ initialConfig, children }) => {
-  const [config, setConfig] = useState<PluginConfig>(initialConfig)
+  const [config, setConfig] = useState<PluginConfig>(() => {
+    if ('zones' in initialConfig) {
+      // Convert legacy config to new format
+      return {
+        defaultZones: initialConfig.zones,
+        globalPluginConfigs: initialConfig.globalPluginConfigs,
+        pageConfigs: [],
+        defaultPageConfig: undefined
+      }
+    }
+    return initialConfig
+  })
+  const [activePageId, setActivePageId] = useState<string | null>(null)
 
-  // Create instances of core services
-  const registry = useMemo(() => new PluginRegistry(), [])
+  // Use the singleton instance
+  const registry = useMemo(() => pluginRegistry, [])
   const loader = useMemo(() => new PluginLoader(), [])
   const eventBus = useMemo(() => new PluginEventBus(), [])
 
-  // Expose registry methods
   const registerPlugin = useCallback(
     (plugin: Plugin) => {
       registry.registerPlugin(plugin)
@@ -50,7 +60,6 @@ export const PluginProvider: React.FC<PluginProviderProps> = ({ initialConfig, c
     [registry],
   )
 
-  // Expose loader methods
   const loadPlugin = useCallback(
     async (path: string) => {
       const plugin = await loader.loadPlugin(path)
@@ -60,29 +69,63 @@ export const PluginProvider: React.FC<PluginProviderProps> = ({ initialConfig, c
     [loader, registry],
   )
 
-  // Config management
   const getConfig = useCallback(() => config, [config])
 
   const updateConfig = useCallback(
     (newConfig: PluginConfig) => {
       setConfig(newConfig)
-      // Notify subscribers about config change
       eventBus.publish('config:updated', newConfig)
     },
     [eventBus],
   )
 
+  const updatePageConfig = useCallback(
+    (pageId: string, newConfig: Partial<PagePluginConfig>) => {
+      setConfig(prev => {
+        const existingPageIndex = prev.pageConfigs.findIndex(p => p.pageId === pageId)
+        
+        if (existingPageIndex >= 0) {
+          const updated = [...prev.pageConfigs]
+          updated[existingPageIndex] = {
+            ...updated[existingPageIndex],
+            ...newConfig
+          }
+          return {
+            ...prev,
+            pageConfigs: updated
+          }
+        } else {
+          return {
+            ...prev,
+            pageConfigs: [
+              ...prev.pageConfigs,
+              {
+                pageId,
+                zones: newConfig.zones || {}
+              } as PagePluginConfig
+            ]
+          }
+        }
+      })
+    },
+    []
+  )
+
+  const setActivePage = useCallback((pageId: string | null) => {
+    setActivePageId(pageId)
+  }, [])
+
   const getAllPlugins = useCallback(() => {
     return registry.getAllPlugins()
   }, [registry])
 
-  // 🔁 Auto-load from config on mount
+  // Auto-load from defaultZones on mount
   useEffect(() => {
-    const zoneIds = Object.values(config.zones).flatMap((zone) => zone.pluginIds || [])
+    const zoneIds = Object.values(config.defaultZones).flatMap(zone => zone.pluginIds || [])
     const toPascalCase = (str: string) =>
       str
         .split(/[-_]/)
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join('')
     zoneIds.forEach(async (id) => {
       try {
@@ -103,12 +146,19 @@ export const PluginProvider: React.FC<PluginProviderProps> = ({ initialConfig, c
       loadPlugin,
       registerPlugin,
       unregisterPlugin,
-      getConfig,
+      getConfig, 
       updateConfig,
+      updatePageConfig,
+      setActivePage,
+      activePageId,
       getAllPlugins,
       eventBus,
     }),
-    [getPlugin, getPluginsForZone, loadPlugin, registerPlugin, unregisterPlugin, getConfig, updateConfig, getAllPlugins, eventBus],
+    [
+      getPlugin, getPluginsForZone, loadPlugin, registerPlugin, 
+      unregisterPlugin, getConfig, updateConfig, updatePageConfig,
+      setActivePage, activePageId, getAllPlugins, eventBus
+    ],
   )
 
   return <PluginContext.Provider value={contextValue}>{children}</PluginContext.Provider>

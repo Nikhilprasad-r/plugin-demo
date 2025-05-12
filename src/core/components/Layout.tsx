@@ -18,7 +18,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <ul className='flex gap-6'>
             <li>
               <Link href='/' className='hover:text-blue-600 transition'>
-                Home
+                Dashboard
+              </Link>
+            </li>
+            <li>
+              <Link href='/user' className='hover:text-blue-600 transition'>
+                User
               </Link>
             </li>
             <li>
@@ -28,25 +33,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </li>
           </ul>
         </nav>
-
-        <div className='header-plugins'>
-          hi
-          <PluginContainer zoneName='header' />
-        </div>
       </header>
 
       <div className='app-content flex flex-1'>
-        <aside className='sidebar w-64 bg-white border-r p-4'>
-          hello
-          <PluginContainer zoneName='sidebar' />
-        </aside>
-
         <main className='main-content flex-1 p-6 bg-gray-50'>{children}</main>
       </div>
 
       <footer className='app-footer bg-white border-t p-4 text-center text-sm'>
-        <PluginContainer zoneName='footer' />
-        wow
         <p className='footer-copyright text-gray-500 mt-2'>©Nikhil 2025 Plugin Demo</p>
       </footer>
     </div>

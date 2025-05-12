@@ -1,137 +1,212 @@
 'use client'
 import { useState } from 'react'
-import { usePluginSystem, usePluginConfig } from '@/core/pluginSystem'
+import { usePluginSystem } from '@/core/pluginSystem'
+import { PagePluginSettings } from '@/components/PagePluginSettings'
 
 export default function SettingsPage() {
-  const { getAllPlugins } = usePluginSystem()
-  const { config, movePlugin, addPluginToZone, removePluginFromZone } = usePluginConfig()
+  const { 
+    getConfig, 
+    getAllPlugins, 
+    updatePageConfig,
+    updateConfig,
+    activePageId,
+    setActivePage
+  } = usePluginSystem()
 
+  // State management
+  const [activeTab, setActiveTab] = useState<'global' | string>('global')
+  const [newPageId, setNewPageId] = useState('')
+  const [isCreatingPage, setIsCreatingPage] = useState(false)
+
+  // Get configuration data
+  const config = getConfig()
   const allPlugins = getAllPlugins()
-  const [draggedPlugin, setDraggedPlugin] = useState<string | null>(null)
-  const [dragOverZone, setDragOverZone] = useState<string | null>(null)
+  const pages = config.pageConfigs
 
-  const handleDragStart = (e: React.DragEvent, pluginId: string) => {
-    e.dataTransfer.setData('text/plain', pluginId)
-    setDraggedPlugin(pluginId)
-  }
-
-  const handleDragOver = (e: React.DragEvent, zoneName: string) => {
-    e.preventDefault()
-    setDragOverZone(zoneName)
-  }
-
-  const handleDragLeave = () => {
-    setDragOverZone(null)
-  }
-
-  const handleDrop = (e: React.DragEvent, zoneName: string) => {
-    e.preventDefault()
-    const pluginId = e.dataTransfer.getData('text/plain')
-    const plugin = allPlugins.find((p) => p.id === pluginId)
+  // Add new page with validation
+  const addNewPage = () => {
+    const trimmedId = newPageId.trim()
     
-    if (plugin && plugin.allowedZones.includes(zoneName)) {
-      let currentZone: string | null = null
-      for (const [zone, zoneConfig] of Object.entries(config.zones)) {
-        if (zoneConfig.pluginIds.includes(pluginId)) {
-          currentZone = zone
-          break
-        }
+    if (!trimmedId) {
+      alert('Please enter a page ID')
+      return
+    }
+
+    if (pages.some(p => p.pageId === trimmedId)) {
+      alert(`Page "${trimmedId}" already exists`)
+      return
+    }
+
+    updatePageConfig(trimmedId, {
+      zones: config.defaultPageConfig?.zones || {}
+    })
+    
+    setActiveTab(trimmedId)
+    setActivePage(trimmedId)
+    setNewPageId('')
+    setIsCreatingPage(false)
+  }
+
+  // Delete page with confirmation
+  const deletePage = (pageId: string) => {
+    if (window.confirm(`Are you sure you want to delete page "${pageId}"?`)) {
+      // Create updated config without this page
+      const updatedConfig = {
+        ...config,
+        pageConfigs: config.pageConfigs.filter(p => p.pageId !== pageId)
       }
       
-      if (currentZone) {
-        movePlugin(pluginId, currentZone, zoneName)
-      } else {
-        addPluginToZone(pluginId, zoneName)
+      updateConfig(updatedConfig)
+      
+      // If deleting the active tab, switch to global
+      if (activeTab === pageId) {
+        setActiveTab('global')
+        setActivePage(null)
       }
     }
-    
-    setDragOverZone(null)
-    setDraggedPlugin(null)
   }
 
-  // 🔍 Get plugins that are NOT in any zone
-  const assignedPluginIds = Object.values(config.zones).flatMap(z => z.pluginIds)
-  const unassignedPlugins = allPlugins.filter(p => !assignedPluginIds.includes(p.id))
+  // Global settings UI (previously in separate component)
+  const renderGlobalSettings = () => (
+    <div className="global-settings space-y-6">
+      <div className="p-6 bg-white rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4">Global Plugin Configuration</h2>
+        <div className="space-y-4">
+          <p className="text-gray-500">
+            These settings apply to all pages unless overridden by page-specific configurations.
+          </p>
+          
+          <div className="space-y-4">
+            <h3 className="font-medium">Default Zones Configuration</h3>
+            {Object.entries(config.defaultZones).map(([zoneName, zoneConfig]) => (
+              <div key={zoneName} className="p-3 bg-gray-50 rounded">
+                <h4 className="font-medium capitalize">{zoneName}</h4>
+                {zoneConfig.pluginIds.length > 0 ? (
+                  <ul className="mt-2 space-y-1">
+                    {zoneConfig.pluginIds.map(pluginId => {
+                      const plugin = allPlugins.find(p => p.id === pluginId)
+                      return (
+                        <li key={pluginId} className="flex justify-between items-center">
+                          <span>{plugin?.name || pluginId}</span>
+                          <span className="text-sm text-gray-500">{pluginId}</span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-1">No plugins in this zone</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 
   return (
-    <div className='settings-page p-6 bg-white rounded-xl shadow space-y-6'>
-      <h2 className='text-2xl font-bold'>Plugin Settings</h2>
-      <p className='text-gray-600'>Drag and drop plugins into different zones to configure layout.</p>
-
-      {/* 🔌 Available Plugins Section */}
-      <div>
-        <h3 className='text-lg font-semibold mb-2'>Available Plugins</h3>
-        {unassignedPlugins.length === 0 ? (
-          <p className='text-sm text-gray-500'>All plugins are assigned.</p>
-        ) : (
-          <ul className='flex flex-wrap gap-3'>
-            {unassignedPlugins.map((plugin) => (
-              <li
-                key={plugin.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, plugin.id)}
-                className='plugin-item cursor-move bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition flex items-center space-x-2'
-              >
-                <span>{plugin.name}</span>
-              </li>
-            ))}
-          </ul>
+    <div className="settings-page p-6 space-y-6 max-w-6xl mx-auto">
+      <header className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-800">Plugin Configuration</h1>
+        
+        {!isCreatingPage && (
+          <button
+            onClick={() => setIsCreatingPage(true)}
+            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
+          >
+            + Create New Page
+          </button>
         )}
-      </div>
+      </header>
 
-      {/* 🧩 Zones */}
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-        {Object.keys(config.zones).map((zone) => {
-          const isDragOver = dragOverZone === zone
-          const canDrop = draggedPlugin
-            ? allPlugins.find(p => p.id === draggedPlugin)?.allowedZones.includes(zone)
-            : false
-
-          return (
-            <div
-              key={zone}
-              onDragOver={(e) => handleDragOver(e, zone)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, zone)}
-              className={`zone-config border-2 p-4 rounded-md min-h-[100px] transition-colors ${
-                isDragOver
-                  ? canDrop
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-red-500 bg-red-50'
-                  : 'border-dashed border-gray-300'
-              }`}
-            >
-              <h3 className='font-semibold mb-2'>{zone}</h3>
-              <ul className='space-y-1'>
-                {config.zones[zone].pluginIds.map((id) => {
-                  const plugin = allPlugins.find((p) => p.id === id)
-                  return (
-                    <li
-                      key={id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, id)}
-                      className='plugin-item cursor-move bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition flex items-center justify-between space-x-2'
-                    >
-                      <span className='truncate'>{plugin?.name || id}</span>
-                      <button
-                        onClick={() => removePluginFromZone(id, zone)}
-                        className='ml-2 text-red-500 hover:text-red-700 text-sm font-bold px-2 py-0.5 rounded-full transition'
-                        title='Remove plugin'
-                      >
-                        &times;
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-              {isDragOver && !canDrop && (
-                <div className="text-red-500 text-sm mt-2">
-                  This plugin cannot be placed in this zone
-                </div>
-              )}
+      {isCreatingPage && (
+        <div className="create-page-form p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <h2 className="text-lg font-semibold mb-3">Create New Page</h2>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={newPageId}
+              onChange={(e) => setNewPageId(e.target.value)}
+              placeholder="Enter page ID (e.g., 'product-page')"
+              className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={addNewPage}
+                disabled={!newPageId.trim()}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => {
+                  setIsCreatingPage(false)
+                  setNewPageId('')
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
             </div>
-          )
-        })}
+          </div>
+        </div>
+      )}
+
+      <div className="tabs-container border-b border-gray-200">
+        <nav className="flex space-x-4">
+          <button
+            className={`px-4 py-2 font-medium text-sm ${
+              activeTab === 'global'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => {
+              setActiveTab('global')
+              setActivePage(null)
+            }}
+          >
+            Global Settings
+          </button>
+          
+          {pages.map(page => (
+            <div key={page.pageId} className="relative group">
+              <button
+                className={`px-4 py-2 font-medium text-sm ${
+                  activeTab === page.pageId
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                onClick={() => {
+                  setActiveTab(page.pageId)
+                  setActivePage(page.pageId)
+                }}
+              >
+                {page.pageId}
+              </button>
+              <button
+                onClick={() => deletePage(page.pageId)}
+                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 
+                  text-xs bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center
+                  hover:bg-red-600 transition-opacity"
+                title="Delete page"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </nav>
+      </div>
+      
+      <div className="tab-content pt-4">
+        {activeTab === 'global' ? (
+          renderGlobalSettings()
+        ) : (
+          <PagePluginSettings 
+            pageId={activeTab} 
+            key={activeTab} // Force re-render when tab changes
+          />
+        )}
       </div>
     </div>
   )

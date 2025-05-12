@@ -8,7 +8,49 @@ export interface PluginProps {
   config?: Record<string, any>;
   instanceId: string;
 }
+// src/core/pluginSystem/types/pluginTypes.ts
 
+export interface PluginZoneConfig {
+  pluginIds: string[];
+  pluginConfigs?: Record<string, Record<string, any>>;
+}
+
+export interface PagePluginConfig {
+  pageId: string;
+  zones: {
+    [zoneName: string]: PluginZoneConfig;
+  };
+}
+
+export interface PluginConfig {
+  /**
+   * Default zone configurations that apply globally
+   * unless overridden by page-specific configurations
+   */
+  defaultZones: {
+    [zoneName: string]: PluginZoneConfig;
+  };
+
+  /**
+   * Global plugin configurations that apply to all instances
+   * unless overridden by zone or page-specific configs
+   */
+  globalPluginConfigs?: Record<string, Record<string, any>>;
+
+  /**
+   * Page-specific configurations that override the defaults
+   */
+  pageConfigs: PagePluginConfig[];
+
+  /**
+   * Template used when creating new page configurations
+   */
+  defaultPageConfig?: {
+    zones: {
+      [zoneName: string]: Omit<PluginZoneConfig, 'pluginConfigs'>;
+    };
+  };
+}
 /**
  * Interface that all plugins must implement
  */
@@ -22,18 +64,6 @@ export interface Plugin<T = Record<string, any>> {
   defaultConfig?: Record<string, any>;
 }
 
-/**
- * Configuration for where plugins are rendered
- */
-export interface PluginConfig {
-  zones: {
-    [zoneName: string]: {
-      pluginIds: string[];
-      pluginConfigs?: Record<string, Record<string, any>>;
-    };
-  };
-  globalPluginConfigs?: Record<string, Record<string, any>>;
-}
 
 /**
  * Properties for the PluginContainer component
@@ -43,6 +73,7 @@ export interface PluginContainerProps {
   pluginIds?: string[];
   pluginConfigs?: Record<string, Record<string, any>>;
   className?: string;
+  pageId?:string;
 }
 
 /**
@@ -84,9 +115,13 @@ export interface PluginContextValue {
   unregisterPlugin(pluginId: string): void;
   getConfig(): PluginConfig;
   updateConfig(config: PluginConfig): void;
-  getAllPlugins: () => Plugin[]; 
+  getAllPlugins(): Plugin[];
+  activePageId: string | null;
   eventBus: IPluginEventBus;
+  updatePageConfig(pageId: string, newConfig: Partial<PagePluginConfig>): void;
+  setActivePage(pageId: string | null): void;
 }
+
 
 export interface UsePluginConfigReturn {
   config: PluginConfig;
