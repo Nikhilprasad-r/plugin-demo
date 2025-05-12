@@ -47,9 +47,6 @@ export default function SettingsPage() {
       'analytics-dashboard',
       'task-manager',
       'footer-links',
-      'content-editor',
-      'search-bar',
-      'notification-center'
     ]
     setAvailablePlugins(pluginIds)
   }, [])
