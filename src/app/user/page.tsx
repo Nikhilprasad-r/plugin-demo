@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { PluginContainer } from '@/components/PluginContainer'
 
-export default function LoginPage() {
+export default function UserPage() {
   const pathname = usePathname()
   const pageId = pathname === '/' ? 'home' : pathname.replace(/^\/|\/$/g, '').replace(/\//g, '-')
 
