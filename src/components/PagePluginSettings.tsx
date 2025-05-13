@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { usePluginSystem } from '@/core/pluginSystem'
-import { usePluginConfig } from '@/core/pluginSystem/hooks/usePluginConfig'
+import { usePluginSystem } from '@/pluginSystem'
+import { usePluginConfig } from '@/pluginSystem/hooks/usePluginConfig'
 
 interface PagePluginSettingsProps {
   pageId: string

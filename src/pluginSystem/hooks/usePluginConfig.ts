@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { usePluginSystem } from '../PluginContext'
-import { PluginConfig, PluginZoneConfig, UsePluginConfigReturn } from '@/core/pluginSystem/types/pluginTypes'
+import { PluginConfig, PluginZoneConfig, UsePluginConfigReturn } from '@/pluginSystem/types/pluginTypes'
 
 export const usePluginConfig = (): UsePluginConfigReturn => {
   const { getConfig, updateConfig, getPlugin } = usePluginSystem()

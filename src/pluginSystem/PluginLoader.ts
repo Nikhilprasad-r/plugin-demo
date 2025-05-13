@@ -1,4 +1,4 @@
-import { Plugin, PluginLoaderType  } from '@/core/pluginSystem/types/pluginTypes';
+import { Plugin, PluginLoaderType  } from '@/pluginSystem/types/pluginTypes';
 
 export class PluginLoader implements PluginLoaderType {
   /**
@@ -8,7 +8,7 @@ export class PluginLoader implements PluginLoaderType {
     try {
 
       // Dynamic import to load the plugin module
-      const module = await import(/* webpackChunkName: "plugin-[request]" */ `../../plugins/${path}`);
+      const module = await import(/* webpackChunkName: "plugin-[request]" */ `../plugins/${path}`);
       console.log("path",module)
       // Plugin modules should export a default object that implements Plugin interface
       const plugin = module.default as Plugin;

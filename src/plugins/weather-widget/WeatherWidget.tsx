@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { usePluginEvents } from '../../core/pluginSystem';
-import { PluginProps } from '@/core/pluginSystem/types/pluginTypes';
+import { usePluginEvents } from '../../pluginSystem';
+import { PluginProps } from '@/pluginSystem/types/pluginTypes';
 
 interface WeatherData {
   temperature: number;

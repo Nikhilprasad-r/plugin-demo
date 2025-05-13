@@ -1,4 +1,4 @@
-import { PluginEventBusType } from '@/core/pluginSystem/types/pluginTypes';
+import { PluginEventBusType } from '@/pluginSystem/types/pluginTypes';
 
 export class PluginEventBus implements PluginEventBusType {
   private events: Map<string, Set<Function>> = new Map();

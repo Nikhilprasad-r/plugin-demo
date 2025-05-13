@@ -1,6 +1,6 @@
 'use client'
 
-import { PluginContainer } from '@/core/components/PluginContainer'
+import { PluginContainer } from '@/components/PluginContainer'
 import { usePathname } from 'next/navigation'
 
 export default function HomePage() {

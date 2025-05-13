@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { PluginContainer } from '@/core/components/PluginContainer'
+import { PluginContainer } from '@/components/PluginContainer'
 
 export default function LoginPage() {
   const pathname = usePathname()

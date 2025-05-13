@@ -1,4 +1,4 @@
-import { Plugin, PluginRegistryType } from '@/core/pluginSystem/types/pluginTypes'
+import { Plugin, PluginRegistryType } from '@/pluginSystem/types/pluginTypes'
 
 interface PluginWithOptions extends Plugin {
   options?: Record<string, any>;

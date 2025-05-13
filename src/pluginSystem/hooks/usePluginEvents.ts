@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { usePluginSystem } from '../PluginContext';
-import { UsePluginEventsReturn } from '@/core/pluginSystem/types/pluginTypes';
+import { UsePluginEventsReturn } from '@/pluginSystem/types/pluginTypes';
 
 type EventCallback<T = any> = (data?: T) => void;
 

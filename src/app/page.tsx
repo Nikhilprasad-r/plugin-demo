@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { usePluginSystem } from '@/core/pluginSystem'
+import { usePluginSystem } from '@/pluginSystem'
 import { PagePluginSettings } from '@/components/PagePluginSettings'
 
 export default function SettingsPage() {
@@ -27,7 +27,7 @@ export default function SettingsPage() {
   useEffect(() => {
     // This would typically come from an API call or a predefined list
     // For now, we're using a hardcoded list of plugin IDs
-    const pluginIds = ['navigation-menu', 'user-profile', 'weather-widget', 'analytics-dashboard', 'blog-widget', 'task-manager', 'footer-links']
+    const pluginIds = ['navigation-menu', 'user-profile', 'weather-widget', 'analytics-dashboard', 'task-manager', 'footer-links']
     setAvailablePlugins(pluginIds)
   }, [])
 

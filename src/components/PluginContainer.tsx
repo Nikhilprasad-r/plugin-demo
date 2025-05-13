@@ -1,6 +1,6 @@
 'use client'
 import React, { useMemo } from 'react'
-import { PluginContainerProps } from '@/core/pluginSystem/types/pluginTypes'
+import { PluginContainerProps } from '@/pluginSystem/types/pluginTypes'
 import { usePluginSystem } from '../pluginSystem/PluginContext'
 
 export const PluginContainer: React.FC<PluginContainerProps> = ({

@@ -1,5 +1,5 @@
 'use client'
-import { PluginConfig } from '@/core/pluginSystem/types/pluginTypes'
+import { PluginConfig } from '@/pluginSystem/types/pluginTypes'
 
 export const defaultPluginConfig: PluginConfig = {
   // Keep defaultZones structure for backward compatibility

@@ -1,4 +1,4 @@
-import { PluginProps } from '@/core/pluginSystem/types/pluginTypes';
+import { PluginProps } from '@/pluginSystem/types/pluginTypes';
 import React, { useState } from 'react';
 
 interface UserData {

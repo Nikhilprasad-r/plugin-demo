@@ -1,6 +1,6 @@
 'use client'
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react'
-import { Plugin, PluginContextValue, PluginConfig, PagePluginConfig } from '@/core/pluginSystem/types/pluginTypes'
+import { Plugin, PluginContextValue, PluginConfig, PagePluginConfig } from '@/pluginSystem/types/pluginTypes'
 import { pluginRegistry } from './PluginRegistry'
 import { PluginLoader } from './PluginLoader'
 import { PluginEventBus } from './PluginEventBus'

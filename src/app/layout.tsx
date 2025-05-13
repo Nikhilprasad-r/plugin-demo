@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
-import { PluginProvider } from '@/core/pluginSystem/PluginContext';
+import { PluginProvider } from '@/pluginSystem/PluginContext';
 import { defaultPluginConfig } from '@/config/pluginConfig';
-import Layout from '@/core/components/Layout';
+import Layout from '@/components/Layout';
 import './globals.css';
 
 export const metadata: Metadata = {
